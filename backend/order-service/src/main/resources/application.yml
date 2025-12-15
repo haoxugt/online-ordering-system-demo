@@ -1,0 +1,46 @@
+server:
+  port: 8084
+spring:
+  application:
+    name: order-service
+  datasource:
+    base-url: jdbc:mysql://localhost:3306
+    url: jdbc:mysql://localhost:3306/order_db_0?createDatabaseIfNotExist=true
+    username: root
+    password: password
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# Sharding configuration
+sharding:
+  enabled: true
+  num-shards: 4
+  databases:
+    - order_db_0
+    - order_db_1
+    - order_db_2
+    - order_db_3

@@ -1,0 +1,42 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: order-service-mongodb
+  data:
+    mongodb:
+      # Connect to mongos router (not directly to shards!)
+      uri: mongodb://mongos:27017/orders_db
+      # For production with authentication:
+      # uri: mongodb://orderservice:orderpass@mongos1:27017,mongos2:27017/orders_db?authSource=orders_db
+      auto-index-creation: true
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+# MongoDB Sharding Configuration
+mongodb:
+  sharding:
+    enabled: true
+    # MongoDB handles sharding automatically
+    # Sharded by: user_id (hashed)
+    # 3 shards with automatic balancing
+  cluster:
+    nodes:
+      - mongos:27017
+    # For HA, add multiple mongos routers:
+    # - mongos1:27017
+    # - mongos2:27017
+    # - mongos3:27017
+
+logging:
+  level:
+    org.springframework.data.mongodb: DEBUG

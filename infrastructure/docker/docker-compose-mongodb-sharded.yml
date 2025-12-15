@@ -1,0 +1,138 @@
+version: '3.8'
+
+services:
+  # Config Server Replica Set (3 nodes)
+  mongo-config-1:
+    image: mongo:7.0
+    container_name: mongo-config-1
+    command: mongod --configsvr --replSet configRS --port 27019 --bind_ip_all
+    ports:
+      - "27019:27019"
+    volumes:
+      - mongo-config-1:/data/db
+    networks:
+      - mongo-shard-network
+
+  mongo-config-2:
+    image: mongo:7.0
+    container_name: mongo-config-2
+    command: mongod --configsvr --replSet configRS --port 27019 --bind_ip_all
+    volumes:
+      - mongo-config-2:/data/db
+    networks:
+      - mongo-shard-network
+
+  mongo-config-3:
+    image: mongo:7.0
+    container_name: mongo-config-3
+    command: mongod --configsvr --replSet configRS --port 27019 --bind_ip_all
+    volumes:
+      - mongo-config-3:/data/db
+    networks:
+      - mongo-shard-network
+
+  # Shard 1 Replica Set
+  mongo-shard1:
+    image: mongo:7.0
+    container_name: mongo-shard1
+    command: mongod --shardsvr --replSet shard1RS --port 27018 --bind_ip_all
+    volumes:
+      - mongo-shard1:/data/db
+    networks:
+      - mongo-shard-network
+
+  # Shard 2 Replica Set
+  mongo-shard2:
+    image: mongo:7.0
+    container_name: mongo-shard2
+    command: mongod --shardsvr --replSet shard2RS --port 27018 --bind_ip_all
+    volumes:
+      - mongo-shard2:/data/db
+    networks:
+      - mongo-shard-network
+
+  # Shard 3 Replica Set
+  mongo-shard3:
+    image: mongo:7.0
+    container_name: mongo-shard3
+    command: mongod --shardsvr --replSet shard3RS --port 27018 --bind_ip_all
+    volumes:
+      - mongo-shard3:/data/db
+    networks:
+      - mongo-shard-network
+
+  # mongos Router
+  mongos:
+    image: mongo:7.0
+    container_name: mongos
+    command: mongos --configdb configRS/mongo-config-1:27019,mongo-config-2:27019,mongo-config-3:27019 --bind_ip_all --port 27017
+    ports:
+      - "27017:27017"
+    depends_on:
+      - mongo-config-1
+      - mongo-config-2
+      - mongo-config-3
+      - mongo-shard1
+      - mongo-shard2
+      - mongo-shard3
+    networks:
+      - mongo-shard-network
+
+  # Setup script container (runs once)
+  mongo-setup:
+    image: mongo:7.0
+    container_name: mongo-setup
+    depends_on:
+      - mongos
+      - mongo-shard1
+      - mongo-shard2
+      - mongo-shard3
+    volumes:
+      - ./mongo-shard-init:/scripts
+    networks:
+      - mongo-shard-network
+    entrypoint: [ "bash", "/scripts/init-shards.sh" ]
+
+  # Other services
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: user_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - mongo-shard-network
+
+  redis:
+    image: redis:7.0-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - mongo-shard-network
+
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - mongo-shard-network
+
+volumes:
+  mongo-config-1:
+  mongo-config-2:
+  mongo-config-3:
+  mongo-shard1:
+  mongo-shard2:
+  mongo-shard3:
+  mysql-data:
+
+networks:
+  mongo-shard-network:
+    driver: bridge
